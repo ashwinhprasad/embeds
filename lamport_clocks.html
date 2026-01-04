@@ -162,7 +162,7 @@
 
     const label = document.createElement("div");
     label.className = "label";
-    label.textContent = time;
+    label.textContent = `(${time}, P${pid})`;
     label.style.left = `${x + 12}px`;
     label.style.top = `${y - 10}px`;
     canvas.appendChild(label);
@@ -218,7 +218,15 @@
     events.length = 0;
     lamport.fill(0);
     eventCounts.fill(0);
-    init();
+    
+    // Re-create process bars only
+    for (let i = 0; i < processes; i++) {
+      const bar = document.createElement("div");
+      bar.className = "process";
+      bar.style.top = `${i * processHeight}px`;
+      bar.dataset.pid = i;
+      canvas.appendChild(bar);
+    }
   }
 
   init();
