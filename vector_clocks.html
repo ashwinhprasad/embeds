@@ -9,17 +9,18 @@
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 20px;
-      background: #f5f5f5;
+      background: #fafafa;
     }
     h1 {
       text-align: center;
     }
     #controls {
       display: flex;
-      gap: 15px;
       justify-content: center;
-      margin-bottom: 20px;
+      gap: 15px;
       flex-wrap: wrap;
+      margin-bottom: 20px;
+      align-items: center;
     }
     button, select {
       padding: 8px 12px;
@@ -28,9 +29,16 @@
       border: 1px solid #ccc;
       cursor: pointer;
     }
+    button:hover {
+      background: #f0f0f0;
+    }
+    label {
+      font-size: 14px;
+      font-weight: 500;
+    }
     #canvas {
       width: 100%;
-      height: 500px;
+      height: 450px;
       background: white;
       border: 1px solid #ccc;
       border-radius: 8px;
@@ -41,146 +49,240 @@
       position: absolute;
       left: 20px;
       width: calc(100% - 40px);
-      height: 100px;
-      border-bottom: 1px dashed #bbb;
+      height: 120px;
+      border-bottom: 1px dashed #ccc;
+    }
+    .process-label {
+      position: absolute;
+      left: 20px;
+      font-weight: bold;
+      font-size: 14px;
+      color: #333;
     }
     .event {
       position: absolute;
-      width: 18px;
-      height: 18px;
-      background: #4287f5;
+      width: 20px;
+      height: 20px;
+      background: #4a90e2;
       border-radius: 50%;
       transform: translate(-50%, -50%);
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
-    .message-line {
+    .label {
+      position: absolute;
+      font-size: 11px;
+      background: rgba(255,255,255,0.95);
+      padding: 3px 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      white-space: nowrap;
+      font-family: 'Courier New', monospace;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .msg-line {
       position: absolute;
       height: 2px;
       background: #e63946;
       transform-origin: 0 0;
+      z-index: 1;
     }
-    .vector-label {
+    .msg-line::after {
+      content: '';
       position: absolute;
-      font-size: 12px;
-      background: rgba(255,255,255,0.8);
-      padding: 2px 4px;
-      border-radius: 4px;
+      right: 0;
+      top: -3px;
+      width: 0;
+      height: 0;
+      border-left: 8px solid #e63946;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+    }
+    .info-box {
+      text-align: center;
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
       border: 1px solid #ccc;
+      border-radius: 8px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .info-box h3 {
+      margin-top: 0;
     }
   </style>
 </head>
 <body>
-  <h1>Vector Clocks Visualizer</h1>
 
-  <div id="controls">
-    <button onclick="addEvent()">Add Event</button>
-    <button onclick="sendMessage()">Send Message</button>
-    <select id="processSelect"></select>
-  </div>
+<h1>Vector Clocks Visualizer</h1>
 
-  <div id="canvas"></div>
+<div id="controls">
+  <label>Add event to:</label>
+  <select id="processSelect"></select>
+  <button onclick="addEvent()">Add Event</button>
+  <span style="margin: 0 10px;">|</span>
+  <label>Send from:</label>
+  <select id="senderSelect"></select>
+  <label>to:</label>
+  <select id="receiverSelect"></select>
+  <button onclick="sendMessage()">Send Message</button>
+  <span style="margin: 0 10px;">|</span>
+  <button onclick="reset()">Reset</button>
+</div>
 
-  <script>
-    const canvas = document.getElementById("canvas");
-    const processSelect = document.getElementById("processSelect");
+<div id="canvas"></div>
 
-    const processes = 3;
-    const processHeight = 150;
-    const events = [];
-    const vectorClocks = Array.from({ length: processes }, (_, i) => ({ process: i, counter: [0,0,0] }));
+<div class="info-box">
+  <h3>How Vector Clocks Work</h3>
+  <p>Each process maintains a vector showing its view of logical time across all processes. When a local event occurs, the process increments only its own counter. When sending a message, the sender includes its entire vector. When receiving, the receiver updates each element to the maximum of its own and the received vector, then increments its own counter.</p>
+</div>
 
-    function init() {
-      for (let i = 0; i < processes; i++) {
-        const proc = document.createElement("div");
-        proc.className = "process";
-        proc.style.top = `${i * processHeight}px`;
-        proc.dataset.pid = i;
-        canvas.appendChild(proc);
+<script>
+  const canvas = document.getElementById("canvas");
+  const processSelect = document.getElementById("processSelect");
+  const senderSelect = document.getElementById("senderSelect");
+  const receiverSelect = document.getElementById("receiverSelect");
 
-        const opt = document.createElement("option");
-        opt.value = i;
-        opt.textContent = `Process ${i}`;
-        processSelect.appendChild(opt);
-      }
+  const processes = 3;
+  const processHeight = 150;
+  const events = [];
+  const vectorClocks = Array.from({ length: processes }, () => Array(processes).fill(0));
+  const eventCounts = Array.from({ length: processes }, () => 0);
+
+  function init() {
+    for (let i = 0; i < processes; i++) {
+      const bar = document.createElement("div");
+      bar.className = "process";
+      bar.style.top = `${i * processHeight}px`;
+      bar.dataset.pid = i;
+      canvas.appendChild(bar);
+
+      const pLabel = document.createElement("div");
+      pLabel.className = "process-label";
+      pLabel.textContent = `P${i}`;
+      pLabel.style.top = `${i * processHeight + 10}px`;
+      canvas.appendChild(pLabel);
+
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = `Process ${i}`;
+      processSelect.appendChild(opt);
+
+      const sOpt = document.createElement("option");
+      sOpt.value = i;
+      sOpt.textContent = `Process ${i}`;
+      senderSelect.appendChild(sOpt);
+
+      const rOpt = document.createElement("option");
+      rOpt.value = i;
+      rOpt.textContent = `Process ${i}`;
+      receiverSelect.appendChild(rOpt);
+    }
+    receiverSelect.selectedIndex = 1;
+  }
+
+  function addEvent() {
+    const pid = parseInt(processSelect.value);
+    vectorClocks[pid][pid]++;
+
+    const x = 100 + eventCounts[pid] * 100;
+    const y = pid * processHeight + 60;
+
+    placeEvent(pid, x, y, [...vectorClocks[pid]]);
+    eventCounts[pid]++;
+  }
+
+  function placeEvent(pid, x, y, vector) {
+    const dot = document.createElement("div");
+    dot.className = "event";
+    dot.style.left = `${x}px`;
+    dot.style.top = `${y}px`;
+    canvas.appendChild(dot);
+
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = `[${vector.join(',')}]`;
+    label.style.left = `${x + 15}px`;
+    label.style.top = `${y - 12}px`;
+    canvas.appendChild(label);
+
+    events.push({ pid, x, y, vector: [...vector] });
+  }
+
+  function sendMessage() {
+    const senderPid = parseInt(senderSelect.value);
+    const receiverPid = parseInt(receiverSelect.value);
+    
+    if (senderPid === receiverPid) {
+      return alert("Sender and receiver must be different processes.");
     }
 
-    function addEvent() {
-      const pid = parseInt(processSelect.value);
-      const procEvents = events.filter(e => e.pid === pid);
-
-      vectorClocks[pid].counter[pid]++;
-
-      const x = 80 + procEvents.length * 80;
-      const y = pid * processHeight + 70;
-
-      const ev = document.createElement("div");
-      ev.className = "event";
-      ev.style.left = `${x}px`;
-      ev.style.top = `${y}px`;
-      canvas.appendChild(ev);
-
-      const label = document.createElement("div");
-      label.className = "vector-label";
-      label.textContent = `[${vectorClocks[pid].counter.join(', ')}]`;
-      label.style.left = `${x + 12}px`;
-      label.style.top = `${y - 10}px`;
-      canvas.appendChild(label);
-
-      events.push({ pid, x, y, clock: [...vectorClocks[pid].counter], elem: ev });
+    const senderEvents = events.filter(e => e.pid === senderPid);
+    if (senderEvents.length === 0) {
+      return alert("Sender has no events.");
     }
+    
+    const sender = senderEvents[senderEvents.length - 1];
 
-    function sendMessage() {
-      if (events.length < 1) return alert("Create at least one event first.");
-
-      const senderPid = parseInt(processSelect.value);
-      const senderEvents = events.filter(e => e.pid === senderPid);
-      if (senderEvents.length < 1) return alert("Sender needs an event to send message.");
-
-      const sender = senderEvents[senderEvents.length - 1];
-
-      let receiverPid = (senderPid + 1) % processes;
-      vectorClocks[receiverPid].counter = vectorClocks[receiverPid].counter.map((v,i) => Math.max(v, sender.clock[i]));
-      vectorClocks[receiverPid].counter[receiverPid]++;
-
-      const recX = sender.x + 120;
-      const recY = receiverPid * processHeight + 70;
-
-      const ev = document.createElement("div");
-      ev.className = "event";
-      ev.style.left = `${recX}px`;
-      ev.style.top = `${recY}px`;
-      canvas.appendChild(ev);
-
-      const label = document.createElement("div");
-      label.className = "vector-label";
-      label.textContent = `[${vectorClocks[receiverPid].counter.join(', ')}]`;
-      label.style.left = `${recX + 12}px`;
-      label.style.top = `${recY - 10}px`;
-      canvas.appendChild(label);
-
-      events.push({ pid: receiverPid, x: recX, y: recY, clock: [...vectorClocks[receiverPid].counter], elem: ev });
-
-      drawMessageLine(sender, { x: recX, y: recY });
+    // Receiver merges vectors: takes max of each element
+    for (let i = 0; i < processes; i++) {
+      vectorClocks[receiverPid][i] = Math.max(vectorClocks[receiverPid][i], sender.vector[i]);
     }
+    // Then increments its own counter
+    vectorClocks[receiverPid][receiverPid]++;
 
-    function drawMessageLine(a, b) {
-      const line = document.createElement("div");
-      line.className = "message-line";
+    const recX = 100 + eventCounts[receiverPid] * 100;
+    const recY = receiverPid * processHeight + 60;
 
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const length = Math.sqrt(dx*dx + dy*dy);
-      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    placeEvent(receiverPid, recX, recY, [...vectorClocks[receiverPid]]);
+    eventCounts[receiverPid]++;
 
-      line.style.left = `${a.x}px`;
-      line.style.top = `${a.y}px`;
-      line.style.width = `${length}px`;
-      line.style.transform = `rotate(${angle}deg)`;
+    drawMsgLine(sender, { x: recX, y: recY });
+  }
 
-      canvas.appendChild(line);
+  function drawMsgLine(a, b) {
+    const line = document.createElement("div");
+    line.className = "msg-line";
+
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const length = Math.sqrt(dx*dx + dy*dy);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+    line.style.left = `${a.x}px`;
+    line.style.top = `${a.y}px`;
+    line.style.width = `${length}px`;
+    line.style.transform = `rotate(${angle}deg)`;
+
+    canvas.appendChild(line);
+  }
+
+  function reset() {
+    canvas.innerHTML = '';
+    events.length = 0;
+    vectorClocks.forEach(v => v.fill(0));
+    eventCounts.fill(0);
+    
+    // Re-create process bars and labels
+    for (let i = 0; i < processes; i++) {
+      const bar = document.createElement("div");
+      bar.className = "process";
+      bar.style.top = `${i * processHeight}px`;
+      bar.dataset.pid = i;
+      canvas.appendChild(bar);
+
+      const pLabel = document.createElement("div");
+      pLabel.className = "process-label";
+      pLabel.textContent = `P${i}`;
+      pLabel.style.top = `${i * processHeight + 10}px`;
+      canvas.appendChild(pLabel);
     }
+  }
 
-    init();
-  </script>
+  init();
+</script>
+
 </body>
 </html>
-
