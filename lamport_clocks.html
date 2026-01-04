@@ -20,6 +20,7 @@
       gap: 15px;
       flex-wrap: wrap;
       margin-bottom: 20px;
+      align-items: center;
     }
     button, select {
       padding: 8px 12px;
@@ -27,6 +28,10 @@
       border-radius: 6px;
       border: 1px solid #ccc;
       cursor: pointer;
+    }
+    label {
+      font-size: 14px;
+      font-weight: 500;
     }
     #canvas {
       width: 100%;
@@ -66,6 +71,17 @@
       background: #e63946;
       transform-origin: 0 0;
     }
+    .msg-line::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: -3px;
+      width: 0;
+      height: 0;
+      border-left: 8px solid #e63946;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+    }
   </style>
 </head>
 <body>
@@ -73,9 +89,17 @@
 <h1>Lamport Clocks Visualizer</h1>
 
 <div id="controls">
+  <label>Add event to:</label>
   <select id="processSelect"></select>
   <button onclick="addEvent()">Add Event</button>
+  <span style="margin: 0 10px;">|</span>
+  <label>Send from:</label>
+  <select id="senderSelect"></select>
+  <label>to:</label>
+  <select id="receiverSelect"></select>
   <button onclick="sendMessage()">Send Message</button>
+  <span style="margin: 0 10px;">|</span>
+  <button onclick="reset()">Reset</button>
 </div>
 
 <div id="canvas"></div>
@@ -83,11 +107,14 @@
 <script>
   const canvas = document.getElementById("canvas");
   const processSelect = document.getElementById("processSelect");
+  const senderSelect = document.getElementById("senderSelect");
+  const receiverSelect = document.getElementById("receiverSelect");
 
   const processes = 3;
   const processHeight = 150;
   const events = [];
   const lamport = Array.from({ length: processes }, () => 0);
+  const eventCounts = Array.from({ length: processes }, () => 0);
 
   function init() {
     for (let i = 0; i < processes; i++) {
@@ -101,18 +128,29 @@
       opt.value = i;
       opt.textContent = `Process ${i}`;
       processSelect.appendChild(opt);
+
+      const sOpt = document.createElement("option");
+      sOpt.value = i;
+      sOpt.textContent = `Process ${i}`;
+      senderSelect.appendChild(sOpt);
+
+      const rOpt = document.createElement("option");
+      rOpt.value = i;
+      rOpt.textContent = `Process ${i}`;
+      receiverSelect.appendChild(rOpt);
     }
+    receiverSelect.selectedIndex = 1;
   }
 
   function addEvent() {
     const pid = parseInt(processSelect.value);
     lamport[pid]++;
 
-    const evCount = events.filter(e => e.pid === pid).length;
-    const x = 100 + evCount * 90;
+    const x = 100 + eventCounts[pid] * 90;
     const y = pid * processHeight + 60;
 
     placeEvent(pid, x, y, lamport[pid]);
+    eventCounts[pid]++;
   }
 
   function placeEvent(pid, x, y, time) {
@@ -133,18 +171,27 @@
   }
 
   function sendMessage() {
-    const senderPid = parseInt(processSelect.value);
+    const senderPid = parseInt(senderSelect.value);
+    const receiverPid = parseInt(receiverSelect.value);
+    
+    if (senderPid === receiverPid) {
+      return alert("Sender and receiver must be different processes.");
+    }
+
     const senderEvents = events.filter(e => e.pid === senderPid);
-    if (senderEvents.length === 0) return alert("Sender has no events.");
+    if (senderEvents.length === 0) {
+      return alert("Sender has no events.");
+    }
+    
     const sender = senderEvents[senderEvents.length - 1];
 
-    let receiverPid = (senderPid + 1) % processes;
     lamport[receiverPid] = Math.max(lamport[receiverPid], sender.time) + 1;
 
-    const recX = sender.x + 120;
+    const recX = 100 + eventCounts[receiverPid] * 90;
     const recY = receiverPid * processHeight + 60;
 
     placeEvent(receiverPid, recX, recY, lamport[receiverPid]);
+    eventCounts[receiverPid]++;
 
     drawMsgLine(sender, { x: recX, y: recY });
   }
@@ -164,6 +211,14 @@
     line.style.transform = `rotate(${angle}deg)`;
 
     canvas.appendChild(line);
+  }
+
+  function reset() {
+    canvas.innerHTML = '';
+    events.length = 0;
+    lamport.fill(0);
+    eventCounts.fill(0);
+    init();
   }
 
   init();
