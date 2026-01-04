@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lamport Clocks Visualizer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #fafafa;
+    }
+    h1 {
+      text-align: center;
+    }
+    #controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    button, select {
+      padding: 8px 12px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+    #canvas {
+      width: 100%;
+      height: 450px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+    .process {
+      position: absolute;
+      left: 20px;
+      width: calc(100% - 40px);
+      height: 120px;
+      border-bottom: 1px dashed #ccc;
+    }
+    .event {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: #4a90e2;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .label {
+      position: absolute;
+      font-size: 12px;
+      background: rgba(255,255,255,0.9);
+      padding: 2px 5px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    .msg-line {
+      position: absolute;
+      height: 2px;
+      background: #e63946;
+      transform-origin: 0 0;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Lamport Clocks Visualizer</h1>
+
+<div id="controls">
+  <select id="processSelect"></select>
+  <button onclick="addEvent()">Add Event</button>
+  <button onclick="sendMessage()">Send Message</button>
+</div>
+
+<div id="canvas"></div>
+
+<script>
+  const canvas = document.getElementById("canvas");
+  const processSelect = document.getElementById("processSelect");
+
+  const processes = 3;
+  const processHeight = 150;
+  const events = [];
+  const lamport = Array.from({ length: processes }, () => 0);
+
+  function init() {
+    for (let i = 0; i < processes; i++) {
+      const bar = document.createElement("div");
+      bar.className = "process";
+      bar.style.top = `${i * processHeight}px`;
+      bar.dataset.pid = i;
+      canvas.appendChild(bar);
+
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = `Process ${i}`;
+      processSelect.appendChild(opt);
+    }
+  }
+
+  function addEvent() {
+    const pid = parseInt(processSelect.value);
+    lamport[pid]++;
+
+    const evCount = events.filter(e => e.pid === pid).length;
+    const x = 100 + evCount * 90;
+    const y = pid * processHeight + 60;
+
+    placeEvent(pid, x, y, lamport[pid]);
+  }
+
+  function placeEvent(pid, x, y, time) {
+    const dot = document.createElement("div");
+    dot.className = "event";
+    dot.style.left = `${x}px`;
+    dot.style.top = `${y}px`;
+    canvas.appendChild(dot);
+
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = time;
+    label.style.left = `${x + 12}px`;
+    label.style.top = `${y - 10}px`;
+    canvas.appendChild(label);
+
+    events.push({ pid, x, y, time });
+  }
+
+  function sendMessage() {
+    const senderPid = parseInt(processSelect.value);
+    const senderEvents = events.filter(e => e.pid === senderPid);
+    if (senderEvents.length === 0) return alert("Sender has no events.");
+    const sender = senderEvents[senderEvents.length - 1];
+
+    let receiverPid = (senderPid + 1) % processes;
+    lamport[receiverPid] = Math.max(lamport[receiverPid], sender.time) + 1;
+
+    const recX = sender.x + 120;
+    const recY = receiverPid * processHeight + 60;
+
+    placeEvent(receiverPid, recX, recY, lamport[receiverPid]);
+
+    drawMsgLine(sender, { x: recX, y: recY });
+  }
+
+  function drawMsgLine(a, b) {
+    const line = document.createElement("div");
+    line.className = "msg-line";
+
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const length = Math.sqrt(dx*dx + dy*dy);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+    line.style.left = `${a.x}px`;
+    line.style.top = `${a.y}px`;
+    line.style.width = `${length}px`;
+    line.style.transform = `rotate(${angle}deg)`;
+
+    canvas.appendChild(line);
+  }
+
+  init();
+</script>
+
+</body>
+</html>
