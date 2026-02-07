@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revoir - Dating App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ============ CSS RESET & BASE ============ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Brand Colors */
+            --coral: #F25555;
+            --purple: #9333EA;
+            --navy: #0A0E1A;
+            --navy-light: #1a1e2e;
+            --teal: #1ABC9C;
+            
+            /* Neutrals */
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-400: #94A3B8;
+            --gray-600: #64748B;
+            --gray-900: #1a1a2e;
+            
+            /* Spacing (4pt grid) */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-xxl: 48px;
+            
+            /* Radius */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --radius-glass: 24px;
+            
+            /* Typography */
+            --font-system: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-system);
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* ============ LAYOUT ============ */
+        .app-container {
+            max-width: 428px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .page {
+            display: none;
+            min-height: calc(100vh - 80px);
+            padding-bottom: 80px;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* ============ NAVIGATION ============ */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 428px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-around;
+            padding: var(--space-md) var(--space-lg);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-xs);
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            stroke: var(--gray-400);
+            stroke-width: 2;
+            fill: none;
+            transition: all 0.2s;
+        }
+
+        .nav-item.active .nav-icon {
+            stroke: var(--coral);
+        }
+
+        .nav-label {
+            font-size: 11px;
+            color: var(--gray-400);
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-item.active .nav-label {
+            color: var(--coral);
+        }
+
+        /* ============ HEADER ============ */
+        .page-header {
+            padding: var(--space-lg);
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--coral), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-subtitle {
+            font-size: 15px;
+            color: var(--gray-600);
+            margin-top: var(--space-xs);
+        }
+
+        /* ============ HOME PAGE ============ */
+        .profile-card-stack {
+            padding: var(--space-lg);
+            position: relative;
+            height: 580px;
+        }
+
+        .profile-card {
+            position: absolute;
+            width: calc(100% - var(--space-xl));
+            height: 520px;
+            border-radius: var(--radius-glass);
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .profile-card:nth-child(1) {
+            z-index: 3;
+            transform: scale(1) translateY(0);
+        }
+
+        .profile-card:nth-child(2) {
+            z-index: 2;
+            transform: scale(0.95) translateY(10px);
+            opacity: 0.7;
+        }
+
+        .profile-card:nth-child(3) {
+            z-index: 1;
+            transform: scale(0.9) translateY(20px);
+            opacity: 0.4;
+        }
+
+        .profile-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: linear-gradient(135deg, var(--coral), var(--purple), var(--navy));
+        }
+
+        .profile-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: var(--space-lg);
+            background: linear-gradient(to top, rgba(10, 14, 26, 0.9), transparent);
+            color: white;
+        }
+
+        .profile-name {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: var(--space-xs);
+        }
+
+        .profile-details {
+            font-size: 15px;
+            opacity: 0.9;
+            display: flex;
+            gap: var(--space-md);
+            margin-bottom: var(--space-sm);
+        }
+
+        .profile-bio {
+            font-size: 15px;
+            opacity: 0.85;
+            line-height: 1.5;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-md);
+            padding: 0 var(--space-lg) var(--space-lg);
+        }
+
+        .action-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-pass {
+            background: white;
+        }
+
+        .btn-super {
+            background: linear-gradient(135deg, var(--coral), var(--purple));
+            width: 64px;
+            height: 64px;
+        }
+
+        .btn-like {
+            background: var(--coral);
+        }
+
+        .btn-icon {
+            width: 28px;
+            height: 28px;
+            stroke: var(--gray-600);
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .btn-super .btn-icon,
+        .btn-like .btn-icon {
+            stroke: white;
+        }
+
+        /* ============ MATCHES PAGE ============ */
+        .matches-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-md);
+            padding: var(--space-lg);
+        }
+
+        .match-card {
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            background: var(--gray-100);
+            cursor: pointer;
+            transition: all 0.2s;
+            aspect-ratio: 3/4;
+        }
+
+        .match-card:active {
+            transform: scale(0.98);
+        }
+
+        .match-image {
+            width: 100%;
+            height: 75%;
+            object-fit: cover;
+            background: linear-gradient(135deg, var(--teal), var(--purple));
+        }
+
+        .match-info {
+            padding: var(--space-sm);
+        }
+
+        .match-name {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .match-message {
+            font-size: 13px;
+            color: var(--gray-600);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .new-badge {
+            position: absolute;
+            top: var(--space-sm);
+            right: var(--space-sm);
+            background: var(--coral);
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+        }
+
+        /* ============ INSIGHTS PAGE ============ */
+        .insights-scroll {
+            padding: var(--space-lg);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-lg);
+        }
+
+        .insight-card {
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .insight-card:active {
+            transform: scale(0.98);
+        }
+
+        .insight-gradient {
+            height: 200px;
+            padding: var(--space-lg);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            color: white;
+        }
+
+        .insight-category {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.8;
+            margin-bottom: var(--space-sm);
+        }
+
+        .insight-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: var(--space-xs);
+        }
+
+        .insight-subtitle {
+            font-size: 15px;
+            opacity: 0.9;
+        }
+
+        .insight-body {
+            background: white;
+            padding: var(--space-lg);
+        }
+
+        .insight-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-md) 0;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .insight-stat:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-size: 15px;
+            color: var(--gray-600);
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        /* Gradient backgrounds for insights */
+        .gradient-brand {
+            background: linear-gradient(135deg, var(--coral) 0%, var(--purple) 50%, var(--navy) 100%);
+        }
+
+        .gradient-emotional {
+            background: linear-gradient(180deg, var(--coral), var(--navy));
+        }
+
+        .gradient-analytical {
+            background: linear-gradient(180deg, var(--purple), var(--navy));
+        }
+
+        .gradient-progress {
+            background: linear-gradient(180deg, var(--teal), var(--navy));
+        }
+
+        .gradient-neutral {
+            background: linear-gradient(180deg, var(--navy), #050810);
+        }
+
+        /* ============ PROFILE PAGE ============ */
+        .profile-hero {
+            height: 300px;
+            background: linear-gradient(135deg, var(--coral), var(--purple));
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            padding: var(--space-lg);
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 4px solid white;
+            background: white;
+            position: absolute;
+            bottom: -50px;
+            left: var(--space-lg);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-content {
+            padding: 60px var(--space-lg) var(--space-lg);
+        }
+
+        .profile-header {
+            margin-bottom: var(--space-lg);
+        }
+
+        .profile-user-name {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: var(--space-xs);
+        }
+
+        .profile-user-details {
+            font-size: 15px;
+            color: var(--gray-600);
+        }
+
+        .section-title {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: var(--space-md);
+            margin-top: var(--space-xl);
+        }
+
+        .preference-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-sm);
+        }
+
+        .tag {
+            background: var(--gray-100);
+            color: var(--gray-900);
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-sm);
+        }
+
+        .stats-row {
+            display: flex;
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+        }
+
+        .stat-box {
+            flex: 1;
+            background: var(--gray-100);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--coral);
+            margin-bottom: var(--space-xs);
+        }
+
+        .stat-text {
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+
+        /* ============ SHAREABLE CARD PAGE ============ */
+        .card-preview {
+            padding: var(--space-lg);
+        }
+
+        .shareable-card {
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            margin-bottom: var(--space-lg);
+        }
+
+        .card-gradient {
+            height: 400px;
+            padding: var(--space-xl);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            color: white;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .card-logo {
+            font-size: 20px;
+            font-weight: 700;
+            background: white;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-category-badge {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            backdrop-filter: blur(10px);
+        }
+
+        .card-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .card-main-stat {
+            font-size: 64px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: var(--space-md);
+        }
+
+        .card-main-label {
+            font-size: 20px;
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .card-secondary-stats {
+            display: flex;
+            gap: var(--space-lg);
+        }
+
+        .secondary-stat {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .secondary-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .secondary-label {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .card-branding {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        .share-button {
+            background: linear-gradient(135deg, var(--coral), var(--purple));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-xl);
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-bottom: var(--space-md);
+        }
+
+        .share-button:active {
+            transform: scale(0.98);
+        }
+
+        /* ============ BUTTONS ============ */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--coral), var(--purple));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        /* ============ EMPTY STATES ============ */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-xxl) var(--space-lg);
+            text-align: center;
+            min-height: 400px;
+        }
+
+        .empty-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: var(--space-lg);
+            opacity: 0.3;
+        }
+
+        .empty-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: var(--space-sm);
+        }
+
+        .empty-text {
+            font-size: 15px;
+            color: var(--gray-600);
+            max-width: 280px;
+        }
+
+        /* ============ RESPONSIVE ============ */
+        @media (max-width: 390px) {
+            .profile-card {
+                height: 480px;
+            }
+            
+            .card-main-stat {
+                font-size: 48px;
+            }
+            
+            .page-title {
+                font-size: 24px;
+            }
+        }
+
+        @media (min-width: 429px) {
+            .app-container {
+                border-radius: var(--radius-xl);
+                margin-top: var(--space-lg);
+                margin-bottom: var(--space-lg);
+            }
+            
+            .bottom-nav {
+                border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- ============ HOME PAGE ============ -->
+        <div id="home" class="page active">
+            <div class="page-header">
+                <div class="page-title">Revoir</div>
+                <div class="page-subtitle">Discover meaningful connections</div>
+            </div>
+
+            <div class="profile-card-stack">
+                <div class="profile-card">
+                    <div class="profile-image"></div>
+                    <div class="profile-info">
+                        <div class="profile-name">Emma, 28</div>
+                        <div class="profile-details">
+                            <span>📍 2 miles away</span>
+                            <span>🎨 Designer</span>
+                        </div>
+                        <div class="profile-bio">
+                            Coffee enthusiast ☕ | Love hiking and finding new bookstores | Looking for someone who can make me laugh
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-card">
+                    <div class="profile-image" style="background: linear-gradient(135deg, var(--purple), var(--teal))"></div>
+                    <div class="profile-info">
+                        <div class="profile-name">Sophie, 26</div>
+                        <div class="profile-details">
+                            <span>📍 3 miles away</span>
+                            <span>📚 Teacher</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-card">
+                    <div class="profile-image" style="background: linear-gradient(135deg, var(--teal), var(--navy))"></div>
+                    <div class="profile-info">
+                        <div class="profile-name">Maya, 27</div>
+                        <div class="profile-details">
+                            <span>📍 5 miles away</span>
+                            <span>🎵 Musician</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="action-btn btn-pass" onclick="swipeLeft()">
+                    <svg class="btn-icon" viewBox="0 0 24 24">
+                        <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="action-btn btn-super">
+                    <svg class="btn-icon" viewBox="0 0 24 24">
+                        <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="action-btn btn-like" onclick="swipeRight()">
+                    <svg class="btn-icon" viewBox="0 0 24 24">
+                        <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- ============ MATCHES PAGE ============ -->
+        <div id="matches" class="page">
+            <div class="page-header">
+                <div class="page-title">Matches</div>
+                <div class="page-subtitle">12 new connections</div>
+            </div>
+
+            <div class="matches-grid">
+                <div class="match-card" onclick="showChat()">
+                    <div style="position: relative;">
+                        <div class="match-image"></div>
+                        <div class="new-badge">NEW</div>
+                    </div>
+                    <div class="match-info">
+                        <div class="match-name">Emma</div>
+                        <div class="match-message">Hey! Love your profile 😊</div>
+                    </div>
+                </div>
+                <div class="match-card">
+                    <div class="match-image" style="background: linear-gradient(135deg, var(--purple), var(--coral))"></div>
+                    <div class="match-info">
+                        <div class="match-name">Sophie</div>
+                        <div class="match-message">Thanks for the like!</div>
+                    </div>
+                </div>
+                <div class="match-card">
+                    <div class="match-image" style="background: linear-gradient(135deg, var(--teal), var(--purple))"></div>
+                    <div class="match-info">
+                        <div class="match-name">Maya</div>
+                        <div class="match-message">What's your favorite...</div>
+                    </div>
+                </div>
+                <div class="match-card">
+                    <div class="match-image" style="background: linear-gradient(135deg, var(--coral), var(--navy))"></div>
+                    <div class="match-info">
+                        <div class="match-name">Olivia</div>
+                        <div class="match-message">Coffee this weekend?</div>
+                    </div>
+                </div>
+                <div class="match-card">
+                    <div class="match-image" style="background: linear-gradient(135deg, var(--purple), var(--navy))"></div>
+                    <div class="match-info">
+                        <div class="match-name">Ava</div>
+                        <div class="match-message">Matched 2 days ago</div>
+                    </div>
+                </div>
+                <div class="match-card">
+                    <div class="match-image" style="background: linear-gradient(135deg, var(--teal), var(--coral))"></div>
+                    <div class="match-info">
+                        <div class="match-name">Isabella</div>
+                        <div class="match-message">Hey there! 👋</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ INSIGHTS PAGE ============ -->
+        <div id="insights" class="page">
+            <div class="page-header">
+                <div class="page-title">Insights</div>
+                <div class="page-subtitle">Your dating journey</div>
+            </div>
+
+            <div class="insights-scroll">
+                <!-- Brand Primary Card -->
+                <div class="insight-card" onclick="showShareableCard('passport')">
+                    <div class="insight-gradient gradient-brand">
+                        <div class="insight-category">Brand Primary</div>
+                        <div class="insight-title">Dating Passport</div>
+                        <div class="insight-subtitle">Your journey this year</div>
+                    </div>
+                    <div class="insight-body">
+                        <div class="insight-stat">
+                            <span class="stat-label">Dates this year</span>
+                            <span class="stat-value">24</span>
+                        </div>
+                        <div class="insight-stat">
+                            <span class="stat-label">New connections</span>
+                            <span class="stat-value">47</span>
+                        </div>
+                        <div class="insight-stat">
+                            <span class="stat-label">Cities visited</span>
+                            <span class="stat-value">3</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Emotional Card -->
+                <div class="insight-card" onclick="showShareableCard('mood')">
+                    <div class="insight-gradient gradient-emotional">
+                        <div class="insight-category">Emotional</div>
+                        <div class="insight-title">Mood Journey</div>
+                        <div class="insight-subtitle">How you're feeling</div>
+                    </div>
+                    <div class="insight-body">
+                        <div class="insight-stat">
+                            <span class="stat-label">Overall mood</span>
+                            <span class="stat-value">😊 Optimistic</span>
+                        </div>
+                        <div class="insight-stat">
+                            <span class="stat-label">Best day</span>
+                            <span class="stat-value">Saturday</span>
+                        </div>
+                        <div class="insight-stat">
+                            <span class="stat-label">Confidence level</span>
+                            <span class="stat-value">85%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytical Card -->
+                <div class="insight-card" onclick="showShareableCard('insights')">
+                    <div class="insight-gradient gradient-analytical">
+                        <div class="insight-category">Analytical</div>
+                        <div class="insight-title">Dating Insights</div>
+                        <div class="insight-subtitle">Patterns & preferences</div>
+                    </div>
+                    <div class="insight-body">
+                        <div class="insight-stat">
+                            <span class="stat-label">Match rate</span>
+                            <span class="stat-value">68%</span>
+                        </div>
+                        <div class="insight-stat">
+                            <span class="stat-label">Response rate</span>
+                            <span class="stat-value">72%</span>
+                        </div>
+                        <div class="insight-stat">
+                            <span class="stat-label">Avg. conversation length</span>
+                            <span class="stat-value">23 messages</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Card -->
+                <div class="insight-card" onclick="showShareableCard('goals')">
+                    <div class="insight-gradient gradient-progress">
+                        <div class="insight-category">Progress</div>
+                        <div class="insight-title">Your Goals</div>
+                        <div class="insight-subtitle">Growing together</div>
+                    </div>
+                    <div class="insight-body">
+                        <div class="insight-stat">
+                            <span class="stat-label">Profile completion</span>
+                            <span class="stat-value">95%</span>
+                        </div>
+                        <div class="insight-stat">
+                            <span class="stat-label">Weekly activity</span>
+                            <span class="stat-value">12 hours</span>
+                        </div>
+                        <div class="insight-stat">
+                            <span class="stat-label">Streak</span>
+                            <span class="stat-value">7 days 🔥</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ PROFILE PAGE ============ -->
+        <div id="profile" class="page">
+            <div class="profile-hero">
+                <div class="profile-avatar"></div>
+            </div>
+
+            <div class="profile-content">
+                <div class="profile-header">
+                    <div class="profile-user-name">Alex Thompson</div>
+                    <div class="profile-user-details">28 • Designer • San Francisco</div>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <div class="stat-number">47</div>
+                        <div class="stat-text">Matches</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">24</div>
+                        <div class="stat-text">Dates</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">92%</div>
+                        <div class="stat-text">Rating</div>
+                    </div>
+                </div>
+
+                <div class="section-title">About</div>
+                <p style="color: var(--gray-600); line-height: 1.7;">
+                    Coffee enthusiast and design lover. I believe in meaningful conversations, spontaneous adventures, and finding beauty in everyday moments. Looking for someone who values authenticity and isn't afraid to be themselves.
+                </p>
+
+                <div class="section-title">Interests</div>
+                <div class="preference-tags">
+                    <div class="tag">☕ Coffee</div>
+                    <div class="tag">🎨 Art</div>
+                    <div class="tag">📚 Reading</div>
+                    <div class="tag">🏃 Running</div>
+                    <div class="tag">🎵 Music</div>
+                    <div class="tag">✈️ Travel</div>
+                    <div class="tag">🍜 Cooking</div>
+                    <div class="tag">📸 Photography</div>
+                </div>
+
+                <div class="section-title">Looking For</div>
+                <div class="preference-tags">
+                    <div class="tag">Meaningful connection</div>
+                    <div class="tag">25-32 years old</div>
+                    <div class="tag">Within 10 miles</div>
+                    <div class="tag">Active lifestyle</div>
+                </div>
+
+                <button class="btn-primary" style="width: 100%; margin-top: var(--space-xl);">
+                    Edit Profile
+                </button>
+            </div>
+        </div>
+
+        <!-- ============ SHAREABLE CARD PAGE (HIDDEN) ============ -->
+        <div id="shareable" class="page">
+            <div class="page-header">
+                <div style="display: flex; align-items: center; gap: var(--space-md);">
+                    <button onclick="closeShareable()" style="background: none; border: none; cursor: pointer; padding: 0;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div>
+                        <div class="page-title">Share Your Story</div>
+                        <div class="page-subtitle">Show your friends</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-preview">
+                <div class="shareable-card" id="shareableCardContent">
+                    <!-- Card content will be dynamically inserted -->
+                </div>
+
+                <button class="share-button">
+                    Share to Instagram Story
+                </button>
+                <button class="share-button" style="background: var(--teal);">
+                    Share to Twitter
+                </button>
+            </div>
+        </div>
+
+        <!-- ============ BOTTOM NAVIGATION ============ -->
+        <div class="bottom-nav">
+            <div class="nav-item active" onclick="navigate('home')">
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M9 22V12h6v10" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="nav-label">Home</span>
+            </div>
+            <div class="nav-item" onclick="navigate('matches')">
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="nav-label">Matches</span>
+            </div>
+            <div class="nav-item" onclick="navigate('insights')">
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                    <path d="M3 3v18h18" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M18 17l-5-5-4 4-4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="nav-label">Insights</span>
+            </div>
+            <div class="nav-item" onclick="navigate('profile')">
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="12" cy="7" r="4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="nav-label">Profile</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Navigation
+        function navigate(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Remove active from all nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Show selected page
+            document.getElementById(pageId).classList.add('active');
+            
+            // Add active to corresponding nav item
+            event.currentTarget.classList.add('active');
+        }
+
+        // Swipe actions
+        let currentCard = 0;
+        const cards = document.querySelectorAll('.profile-card');
+
+        function swipeLeft() {
+            animateSwipe('left');
+        }
+
+        function swipeRight() {
+            animateSwipe('right');
+        }
+
+        function animateSwipe(direction) {
+            if (currentCard >= cards.length) return;
+            
+            const card = cards[currentCard];
+            const translateX = direction === 'left' ? -500 : 500;
+            
+            card.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            card.style.transform = `translateX(${translateX}px) rotate(${direction === 'left' ? -20 : 20}deg)`;
+            card.style.opacity = '0';
+            
+            setTimeout(() => {
+                card.style.display = 'none';
+                currentCard++;
+                
+                if (currentCard >= cards.length) {
+                    // Show empty state
+                    const stack = document.querySelector('.profile-card-stack');
+                    stack.innerHTML = `
+                        <div class="empty-state">
+                            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <div class="empty-title">No more profiles</div>
+                            <div class="empty-text">Check back later for new people in your area!</div>
+                        </div>
+                    `;
+                }
+            }, 300);
+        }
+
+        // Show shareable card
+        function showShareableCard(type) {
+            const shareablePage = document.getElementById('shareable');
+            const cardContent = document.getElementById('shareableCardContent');
+            
+            let content = '';
+            
+            if (type === 'passport') {
+                content = `
+                    <div class="card-gradient gradient-brand">
+                        <div class="card-header">
+                            <div class="card-logo">revoir</div>
+                            <div class="card-category-badge">Dating Passport</div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-main-stat">2025</div>
+                            <div class="card-main-label">Year in Dating</div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="card-secondary-stats">
+                                <div class="secondary-stat">
+                                    <div class="secondary-value">24</div>
+                                    <div class="secondary-label">Dates</div>
+                                </div>
+                                <div class="secondary-stat">
+                                    <div class="secondary-value">47</div>
+                                    <div class="secondary-label">Matches</div>
+                                </div>
+                                <div class="secondary-stat">
+                                    <div class="secondary-value">3</div>
+                                    <div class="secondary-label">Cities</div>
+                                </div>
+                            </div>
+                            <div class="card-branding">revoir.app</div>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'mood') {
+                content = `
+                    <div class="card-gradient gradient-emotional">
+                        <div class="card-header">
+                            <div class="card-logo">revoir</div>
+                            <div class="card-category-badge">Mood Journey</div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-main-stat">😊</div>
+                            <div class="card-main-label">Optimistic & Growing</div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="card-secondary-stats">
+                                <div class="secondary-stat">
+                                    <div class="secondary-value">85%</div>
+                                    <div class="secondary-label">Confident</div>
+                                </div>
+                                <div class="secondary-stat">
+                                    <div class="secondary-value">7</div>
+                                    <div class="secondary-label">Day Streak</div>
+                                </div>
+                            </div>
+                            <div class="card-branding">revoir.app</div>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'insights') {
+                content = `
+                    <div class="card-gradient gradient-analytical">
+                        <div class="card-header">
+                            <div class="card-logo">revoir</div>
+                            <div class="card-category-badge">Insights</div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-main-stat">68%</div>
+                            <div class="card-main-label">Match Success Rate</div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="card-secondary-stats">
+                                <div class="secondary-stat">
+                                    <div class="secondary-value">72%</div>
+                                    <div class="secondary-label">Response</div>
+                                </div>
+                                <div class="secondary-stat">
+                                    <div class="secondary-value">23</div>
+                                    <div class="secondary-label">Avg. Messages</div>
+                                </div>
+                            </div>
+                            <div class="card-branding">revoir.app</div>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'goals') {
+                content = `
+                    <div class="card-gradient gradient-progress">
+                        <div class="card-header">
+                            <div class="card-logo">revoir</div>
+                            <div class="card-category-badge">Goals</div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-main-stat">95%</div>
+                            <div class="card-main-label">Profile Complete</div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="card-secondary-stats">
+                                <div class="secondary-stat">
+                                    <div class="secondary-value">12h</div>
+                                    <div class="secondary-label">Weekly</div>
+                                </div>
+                                <div class="secondary-stat">
+                                    <div class="secondary-value">🔥 7</div>
+                                    <div class="secondary-label">Streak</div>
+                                </div>
+                            </div>
+                            <div class="card-branding">revoir.app</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            cardContent.innerHTML = content;
+            
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Show shareable page
+            shareablePage.classList.add('active');
+        }
+
+        function closeShareable() {
+            // Go back to insights
+            navigate('insights');
+            
+            // Re-activate insights nav
+            document.querySelectorAll('.nav-item').forEach((item, index) => {
+                item.classList.remove('active');
+                if (index === 2) item.classList.add('active'); // Insights is 3rd item
+            });
+        }
+
+        function showChat() {
+            alert('Chat feature would open here! 💬');
+        }
+    </script>
+</body>
+</html>
