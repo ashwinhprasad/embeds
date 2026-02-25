@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RGA Document Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --border: #1e2330;
+    --accent: #4fffb0;
+    --accent2: #ff6b6b;
+    --accent3: #6b8cff;
+    --accent4: #ffd166;
+    --text: #c9d1e0;
+    --text-dim: #5a6480;
+    --node-bg: #13161f;
+    --node-border: #252d42;
+    --connector: #2a3350;
+    --shadow: 0 4px 24px rgba(0,0,0,0.5);
+    --grid-color: rgba(79,255,176,0.03);
+  }
+
+  html[data-theme="light"] {
+    --bg: #f0f2f7;
+    --surface: #ffffff;
+    --border: #d0d6e8;
+    --accent: #0a9c60;
+    --accent2: #d63031;
+    --accent3: #3d5af1;
+    --accent4: #c47a00;
+    --text: #1a1f2e;
+    --text-dim: #8a95b0;
+    --node-bg: #ffffff;
+    --node-border: #c5cde0;
+    --connector: #b0bcd8;
+    --shadow: 0 4px 24px rgba(0,0,0,0.1);
+    --grid-color: rgba(60,100,180,0.05);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    height: 100vh;
+    overflow: hidden;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  #grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 56px;
+    background: rgba(10,12,16,0.92);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+    z-index: 300;
+    backdrop-filter: blur(12px);
+    transition: background 0.3s, border-color 0.3s;
+  }
+
+  html[data-theme="light"] header {
+    background: rgba(240,242,247,0.92);
+  }
+
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  header .meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    border-left: 1px solid var(--border);
+    padding-left: 16px;
+  }
+
+  header .meta span { color: var(--accent4); font-weight: 600; }
+
+  .header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pan-hint {
+    font-size: 10px;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+  }
+
+  #theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 5px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+
+  #theme-toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Inspector */
+  #inspector {
+    position: fixed;
+    top: 68px;
+    right: 20px;
+    width: 300px;
+    background: var(--surface);
+    border: 1px solid var(--node-border);
+    border-radius: 8px;
+    z-index: 200;
+    box-shadow: var(--shadow);
+    transition: opacity 0.2s, background 0.3s, border-color 0.3s;
+    overflow: hidden;
+  }
+
+  #inspector.empty { opacity: 0.45; }
+
+  #inspector-header {
+    background: rgba(79,255,176,0.06);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  html[data-theme="light"] #inspector-header {
+    background: rgba(10,156,96,0.06);
+  }
+
+  #inspector-header .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  #inspector-header .label {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  #inspector-content {
+    padding: 12px 14px;
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+  }
+
+  #inspector-content::-webkit-scrollbar { width: 4px; }
+  #inspector-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .inspector-empty-msg { font-size: 11px; color: var(--text-dim); font-style: italic; }
+
+  .inspector-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 10px;
+    margin-bottom: 6px;
+    align-items: start;
+  }
+
+  .inspector-key {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding-top: 1px;
+    white-space: nowrap;
+  }
+
+  .inspector-val { font-size: 11px; color: var(--text); word-break: break-all; }
+  .inspector-val.accent  { color: var(--accent);  font-weight: 600; }
+  .inspector-val.accent2 { color: var(--accent2); }
+  .inspector-val.accent3 { color: var(--accent3); }
+  .inspector-val.accent4 { color: var(--accent4); }
+  .inspector-val.dim     { color: var(--text-dim); }
+
+  .inspector-divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+
+  /* Panning viewport */
+  #viewport {
+    position: fixed;
+    inset: 56px 0 0 0;
+    overflow: hidden;
+    cursor: grab;
+    z-index: 1;
+  }
+
+  #viewport.panning { cursor: grabbing; }
+
+  #canvas {
+    position: absolute;
+    top: 0; left: 0;
+    padding: 80px 200px 120px 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  /* Tree */
+  .tree-root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Extra top padding so the badge never clips against anything above */
+  .node-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    padding-top: 14px;
+  }
+
+  .node {
+    width: 220px;
+    background: var(--node-bg);
+    border: 1px solid var(--node-border);
+    border-radius: 6px;
+    /* top padding is larger so content doesn't sit under the badge */
+    padding: 14px 14px 12px 14px;
+    cursor: default;
+    position: relative;
+    overflow: visible; /* badge can float above the border */
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, background 0.3s;
+    user-select: none;
+  }
+
+  .node:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 32px rgba(79,255,176,0.15);
+    transform: translateY(-1px);
+  }
+
+  .node.sentinel { background: rgba(10,12,16,0.6); }
+  html[data-theme="light"] .node.sentinel { background: rgba(220,225,240,0.6); }
+
+  .node.sentinel:hover {
+    border-color: var(--accent3);
+    box-shadow: 0 0 0 1px var(--accent3), 0 8px 32px rgba(107,140,255,0.15);
+  }
+
+  .node.deleted { opacity: 0.45; border-style: dashed; }
+
+  /* Badge floats ABOVE the node — positioned relative to .node-wrapper via padding-top trick */
+  .node-type-badge {
+    position: absolute;
+    /* sits in the 14px padding-top gap of node-wrapper, centered on the node's top border */
+    top: 4px;
+    right: 22px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--bg);
+    z-index: 2;
+    white-space: nowrap;
+    transition: background 0.3s;
+    line-height: 1.6;
+  }
+
+  .badge-sentinel  { color: var(--accent3);  border: 1px solid var(--accent3);  }
+  .badge-paragraph { color: var(--accent);   border: 1px solid var(--accent);   }
+  .badge-list      { color: var(--accent4);  border: 1px solid var(--accent4);  }
+  .badge-listitem  { color: var(--accent2);  border: 1px solid var(--accent2);  }
+  .badge-char      { color: var(--text-dim); border: 1px solid var(--text-dim); }
+  .badge-rga       { color: #a855f7;         border: 1px solid #a855f7;         }
+
+  .node-id { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; font-family: 'Syne', sans-serif; }
+  .node-id .id-bracket { color: var(--text-dim); }
+  .node-id .id-val     { color: var(--accent); }
+
+  .node-row { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+  .node-attr { font-size: 10px; color: var(--text-dim); }
+  .node-attr-val { font-size: 10px; font-weight: 600; }
+  .val-true  { color: var(--accent);  }
+  .val-false { color: var(--accent2); }
+  .after-ref span { color: var(--accent3); }
+
+  .node-value {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .node-value .val-label   { margin-bottom: 3px; }
+  .node-value .val-content { font-size: 12px; color: var(--text); font-weight: 600; }
+
+  /* Connectors */
+  .children-section { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+  .children-line {
+    width: 2px;
+    height: 24px;
+    background: var(--connector);
+    transition: background 0.3s;
+  }
+
+  .toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+
+  .toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .toggle-btn .arrow { display: inline-block; transition: transform 0.2s; }
+  .toggle-btn.collapsed .arrow { transform: rotate(-90deg); }
+
+  .children-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .children-container.collapsed { display: none; }
+
+  .siblings-row { display: flex; flex-direction: row; gap: 24px; align-items: flex-start; justify-content: center; }
+  .sibling-col  { display: flex; flex-direction: column; align-items: center; }
+
+  /* Value (content/items) connector styling — distinct from children */
+  .value-section { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+  .value-line {
+    width: 2px;
+    height: 24px;
+    background: repeating-linear-gradient(
+      to bottom,
+      #a855f7 0px, #a855f7 4px,
+      transparent 4px, transparent 8px
+    );
+    transition: background 0.3s;
+  }
+
+  html[data-theme="light"] .value-line {
+    background: repeating-linear-gradient(
+      to bottom,
+      #7c3aed 0px, #7c3aed 4px,
+      transparent 4px, transparent 8px
+    );
+  }
+
+  .value-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid #a855f7;
+    border-radius: 4px;
+    color: #a855f7;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+
+  .value-toggle-btn:hover { background: rgba(168,85,247,0.1); color: #c084fc; border-color: #c084fc; }
+  .value-toggle-btn .arrow { display: inline-block; transition: transform 0.2s; }
+  .value-toggle-btn.collapsed .arrow { transform: rotate(-90deg); }
+
+  .value-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .value-container.collapsed { display: none; }
+
+  /* Edge labels */
+  .edge-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-bottom: 2px;
+  }
+
+  .edge-label-children {
+    color: var(--accent3);
+    background: rgba(107,140,255,0.08);
+  }
+
+  .edge-label-value {
+    color: #a855f7;
+    background: rgba(168,85,247,0.08);
+  }
+
+  /* Children toggle gets a subtle blue tint to differentiate */
+  .children-toggle-btn {
+    border-color: var(--accent3);
+    color: var(--accent3);
+  }
+
+  .children-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Fork layout: when a node has BOTH value and children ── */
+  .fork-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  .fork-stem {
+    width: 2px;
+    height: 20px;
+    background: var(--connector);
+  }
+
+  /* The horizontal bar that splits into two branches */
+  .fork-bar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    position: relative;
+    gap: 0;
+  }
+
+  /* The horizontal connector line behind the two branches */
+  .fork-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    /* width is set dynamically via JS, but fallback: */
+    width: calc(100% - 40px);
+    height: 2px;
+    background: var(--connector);
+    z-index: 0;
+  }
+
+  .fork-branch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 120px;
+    padding: 0 20px;
+    position: relative;
+  }
+
+  /* Vertical stub from the horizontal bar down into the branch */
+  .fork-branch-stem {
+    width: 2px;
+    height: 16px;
+    z-index: 1;
+  }
+
+  .fork-branch-stem.stem-value {
+    background: repeating-linear-gradient(
+      to bottom,
+      #a855f7 0px, #a855f7 4px,
+      transparent 4px, transparent 8px
+    );
+  }
+
+  .fork-branch-stem.stem-children {
+    background: var(--connector);
+  }
+
+  /* Legend */
+  #legend {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    z-index: 200;
+    font-size: 10px;
+    transition: background 0.3s, border-color 0.3s;
+  }
+
+  #legend .leg-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .leg-row  { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
+  .leg-dot  { width: 8px; height: 8px; border-radius: 2px; border: 1px solid; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div id="grid-bg"></div>
+
+<header>
+  <h1>RGA Document Visualizer</h1>
+  <div class="meta">replicaId: <span>1</span> &nbsp;|&nbsp; clock: <span>9</span> &nbsp;|&nbsp; ops: <span>9</span></div>
+  <div class="header-right">
+    <div class="pan-hint">✥ drag to pan</div>
+    <button id="theme-toggle" onclick="toggleTheme()">
+      <span id="theme-icon">☀️</span>
+      <span id="theme-label">Light</span>
+    </button>
+  </div>
+</header>
+
+<div id="inspector">
+  <div id="inspector-header">
+    <div class="dot"></div>
+    <div class="label">Node Inspector</div>
+  </div>
+  <div id="inspector-content">
+    <p class="inspector-empty-msg">Hover over a node to inspect it</p>
+  </div>
+</div>
+
+<div id="viewport">
+  <div id="canvas"></div>
+</div>
+
+<div id="legend">
+  <div class="leg-title">Node Types</div>
+  <div class="leg-row"><div class="leg-dot" style="border-color:#6b8cff;background:rgba(107,140,255,0.15)"></div><span style="color:#6b8cff">Sentinel (HEAD)</span></div>
+  <div class="leg-row"><div class="leg-dot" style="border-color:#4fffb0;background:rgba(79,255,176,0.15)"></div><span style="color:#4fffb0">Paragraph Block</span></div>
+  <div class="leg-row"><div class="leg-dot" style="border-color:#ffd166;background:rgba(255,209,102,0.15)"></div><span style="color:#ffd166">List Block</span></div>
+  <div class="leg-row"><div class="leg-dot" style="border-color:#ff6b6b;background:rgba(255,107,107,0.15)"></div><span style="color:#ff6b6b">List Item</span></div>
+  <div class="leg-row"><div class="leg-dot" style="border-color:#888;background:rgba(136,136,136,0.15)"></div><span style="color:#888">Character</span></div>
+  <div class="leg-row"><div class="leg-dot" style="border-color:#a855f7;background:rgba(168,85,247,0.15)"></div><span style="color:#a855f7">RGA Container</span></div>
+  <div class="leg-title" style="margin-top:8px">Edge Types</div>
+  <div class="leg-row"><div style="width:18px;height:2px;background:var(--connector);flex-shrink:0"></div><span style="color:var(--accent3)">children (next sibling)</span></div>
+  <div class="leg-row"><div style="width:18px;height:2px;flex-shrink:0;background:repeating-linear-gradient(to right,#a855f7 0px,#a855f7 4px,transparent 4px,transparent 8px)"></div><span style="color:#a855f7">value (content/items)</span></div>
+</div>
+
+<script>
+// ── Theme ───────────────────────────────────────────────────────
+let isDark = true;
+function toggleTheme() {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.getElementById('theme-label').textContent = isDark ? 'Light' : 'Dark';
+  document.getElementById('theme-icon').textContent  = isDark ? '☀️' : '🌙';
+}
+
+// ── Panning ─────────────────────────────────────────────────────
+const viewport = document.getElementById('viewport');
+const canvas   = document.getElementById('canvas');
+let panX = 0, panY = 0, startX, startY, isPanning = false;
+
+viewport.addEventListener('mousedown', e => {
+  if (e.target.closest('.toggle-btn')) return;
+  isPanning = true;
+  startX = e.clientX - panX;
+  startY = e.clientY - panY;
+  viewport.classList.add('panning');
+  e.preventDefault();
+});
+
+window.addEventListener('mousemove', e => {
+  if (!isPanning) return;
+  panX = e.clientX - startX;
+  panY = e.clientY - startY;
+  canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+});
+
+window.addEventListener('mouseup', () => {
+  isPanning = false;
+  viewport.classList.remove('panning');
+});
+
+// ── Data ────────────────────────────────────────────────────────
+const docData = {
+  type: "document", replicaId: 1, clock: 9,
+  blocks: {
+    id: "HEAD", after: "HEAD", deleted: false, value: null,
+    children: [
+      {
+        id: [1,1], after: "HEAD", deleted: false,
+        value: {
+          type: "paragraph",
+          content: {
+            id: "HEAD", after: "HEAD", deleted: false, value: null,
+            children: [
+              {
+                id: [1,2], after: "HEAD", deleted: false, value: "H",
+                children: [
+                  { id: [1,3], after: [1,2], deleted: false, value: "i", children: [] }
+                ]
+              }
+            ]
+          }
+        },
+        children: [
+          {
+            id: [1,4], after: [1,1], deleted: false,
+            value: {
+              type: "list", style: "bullet",
+              items: {
+                id: "HEAD", after: "HEAD", deleted: false, value: null,
+                children: [
+                  {
+                    id: [1,5], after: "HEAD", deleted: false,
+                    value: {
+                      content: {
+                        id: "HEAD", after: "HEAD", deleted: false, value: null,
+                        children: [
+                          {
+                            id: [1,6], after: "HEAD", deleted: false, value: "T",
+                            children: [
+                              {
+                                id: [1,7], after: [1,6], deleted: false, value: "o",
+                                children: [
+                                  {
+                                    id: [1,8], after: [1,7], deleted: false, value: "d",
+                                    children: [
+                                      { id: [1,9], after: [1,8], deleted: false, value: "o", children: [] }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    children: []
+                  }
+                ]
+              }
+            },
+            children: []
+          }
+        ]
+      }
+    ]
+  }
+};
+
+// ── Helpers ─────────────────────────────────────────────────────
+function fmtId(id) {
+  if (id === "HEAD") return "HEAD";
+  if (Array.isArray(id)) return `[${id[0]},${id[1]}]`;
+  return String(id);
+}
+
+function getNodeKind(node) {
+  if (node.id === "HEAD") return "sentinel";
+  if (node.value && typeof node.value === "object" && node.value.type === "paragraph") return "paragraph";
+  if (node.value && typeof node.value === "object" && node.value.type === "list") return "list";
+  if (node.value && typeof node.value === "object" && node.value.content) return "listitem";
+  if (typeof node.value === "string") return "char";
+  return "rga";
+}
+
+function getKindLabel(k) {
+  return { sentinel:"Sentinel", paragraph:"Paragraph", list:"List", listitem:"List Item", char:"Char", rga:"RGA" }[k] || k;
+}
+
+function getNodeSummary(node) {
+  const k = getNodeKind(node);
+  if (k === "char")      return `'${node.value}'`;
+  if (k === "paragraph") return "¶ Paragraph";
+  if (k === "list")      return `☰ ${node.value.style || ''} List`;
+  if (k === "listitem")  return "• Item";
+  if (k === "sentinel")  return "◈ HEAD";
+  return "·";
+}
+
+function buildInspectorHTML(node, context) {
+  const kind = getNodeKind(node);
+  let h = `
+    <div class="inspector-row"><div class="inspector-key">ID</div><div class="inspector-val accent">${fmtId(node.id)}</div></div>
+    <div class="inspector-row"><div class="inspector-key">After</div><div class="inspector-val accent3">${fmtId(node.after)}</div></div>
+    <div class="inspector-row"><div class="inspector-key">Deleted</div><div class="inspector-val ${node.deleted ? 'accent2' : 'dim'}">${node.deleted}</div></div>
+    <div class="inspector-row"><div class="inspector-key">Kind</div><div class="inspector-val accent4">${getKindLabel(kind)}</div></div>
+    <hr class="inspector-divider">
+  `;
+
+  if (kind === "char") {
+    h += `<div class="inspector-row"><div class="inspector-key">Value</div><div class="inspector-val accent">"${node.value}"</div></div>
+          <div class="inspector-row"><div class="inspector-key">Char Code</div><div class="inspector-val dim">${node.value.charCodeAt(0)}</div></div>`;
+  } else if (kind === "paragraph") {
+    h += `<div class="inspector-row"><div class="inspector-key">Type</div><div class="inspector-val">${node.value.type}</div></div>
+          <div class="inspector-row"><div class="inspector-key">Content</div><div class="inspector-val dim">RGA&lt;string&gt;</div></div>`;
+  } else if (kind === "list") {
+    h += `<div class="inspector-row"><div class="inspector-key">Type</div><div class="inspector-val">${node.value.type}</div></div>
+          <div class="inspector-row"><div class="inspector-key">Style</div><div class="inspector-val accent4">${node.value.style}</div></div>
+          <div class="inspector-row"><div class="inspector-key">Items</div><div class="inspector-val dim">RGA&lt;ListItem&gt;</div></div>`;
+  } else if (kind === "listitem") {
+    h += `<div class="inspector-row"><div class="inspector-key">Content</div><div class="inspector-val dim">RGA&lt;string&gt;</div></div>`;
+  } else if (kind === "sentinel") {
+    h += `<div class="inspector-row"><div class="inspector-key">Role</div><div class="inspector-val dim">RGA root sentinel</div></div>
+          <div class="inspector-row"><div class="inspector-key">Value</div><div class="inspector-val dim">null</div></div>`;
+  }
+
+  if (node.children !== undefined) {
+    h += `<hr class="inspector-divider">
+          <div class="inspector-row"><div class="inspector-key">Children</div><div class="inspector-val accent3">${node.children.length}</div></div>`;
+  }
+
+  if (context) {
+    h += `<hr class="inspector-divider">
+          <div class="inspector-row"><div class="inspector-key">Context</div><div class="inspector-val dim">${context}</div></div>`;
+  }
+
+  return h;
+}
+
+// ── Build node elements ─────────────────────────────────────────
+function makeNode(node, context) {
+  const kind = getNodeKind(node);
+  const el = document.createElement('div');
+  el.className = 'node' + (kind === 'sentinel' ? ' sentinel' : '') + (node.deleted ? ' deleted' : '');
+
+  el.innerHTML = `
+    <div class="node-type-badge badge-${kind}">${getKindLabel(kind)}</div>
+    <div class="node-id">
+      <span class="id-bracket">id:</span>
+      <span class="id-val">${fmtId(node.id)}</span>
+    </div>
+    <div class="node-row">
+      <span class="node-attr">after</span>
+      <span class="node-attr-val after-ref"><span>${fmtId(node.after)}</span></span>
+    </div>
+    <div class="node-row">
+      <span class="node-attr">deleted</span>
+      <span class="node-attr-val ${node.deleted ? 'val-true' : 'val-false'}">${node.deleted}</span>
+    </div>
+    <div class="node-value">
+      <div class="val-label">value</div>
+      <div class="val-content">${getNodeSummary(node)}</div>
+    </div>
+  `;
+
+  el.addEventListener('mouseenter', () => {
+    const inspector = document.getElementById('inspector');
+    inspector.classList.remove('empty');
+    document.getElementById('inspector-content').innerHTML = buildInspectorHTML(node, context);
+  });
+
+  return el;
+}
+
+function makeLine(h = 24) {
+  const el = document.createElement('div');
+  el.className = 'children-line';
+  el.style.height = h + 'px';
+  return el;
+}
+
+function makeToggle(count, containerEl, isValue) {
+  const btn = document.createElement('button');
+  btn.className = isValue ? 'value-toggle-btn' : 'toggle-btn children-toggle-btn';
+  const typeLabel = isValue ? 'value' : (count !== 1 ? 'children' : 'child');
+  const hiddenLabel = isValue ? 'value hidden' : 'hidden';
+  btn.innerHTML = `<span class="arrow">▼</span>&nbsp;${isValue ? typeLabel : count + ' ' + typeLabel}`;
+  btn.onclick = e => {
+    e.stopPropagation();
+    const collapsed = containerEl.classList.toggle('collapsed');
+    btn.classList.toggle('collapsed', collapsed);
+    btn.innerHTML = collapsed
+      ? `<span class="arrow">▼</span>&nbsp;${isValue ? hiddenLabel : count + ' ' + hiddenLabel}`
+      : `<span class="arrow">▼</span>&nbsp;${isValue ? typeLabel : count + ' ' + typeLabel}`;
+  };
+  return btn;
+}
+
+function buildTree(node, context) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'node-wrapper';
+  wrapper.appendChild(makeNode(node, context));
+
+  // Separate value sub-RGAs from children
+  const subRGAs = [];
+  if (node.value && typeof node.value === 'object') {
+    if (node.value.content) subRGAs.push({ rga: node.value.content, label: 'content' });
+    if (node.value.items)   subRGAs.push({ rga: node.value.items,   label: 'items'   });
+  }
+  const children = node.children || [];
+
+  const hasValue    = subRGAs.length > 0;
+  const hasChildren = children.length > 0;
+
+  // ── Case 1: BOTH value and children → fork into two parallel branches ──
+  if (hasValue && hasChildren) {
+    const forkSection = document.createElement('div');
+    forkSection.className = 'fork-section';
+
+    // Stem from node to fork point
+    const stem = document.createElement('div');
+    stem.className = 'fork-stem';
+    forkSection.appendChild(stem);
+
+    // Horizontal bar with two branches
+    const forkBar = document.createElement('div');
+    forkBar.className = 'fork-bar';
+
+    // ── Left branch: value ──
+    const valueBranch = document.createElement('div');
+    valueBranch.className = 'fork-branch';
+
+    const valueStem = document.createElement('div');
+    valueStem.className = 'fork-branch-stem stem-value';
+    valueBranch.appendChild(valueStem);
+
+    const valueLabel = document.createElement('div');
+    valueLabel.className = 'edge-label edge-label-value';
+    valueLabel.textContent = subRGAs.length === 1 ? subRGAs[0].label : 'value';
+    valueBranch.appendChild(valueLabel);
+
+    const valueContainer = document.createElement('div');
+    valueContainer.className = 'value-container';
+    const valSibRow = document.createElement('div');
+    valSibRow.className = 'siblings-row';
+    subRGAs.forEach(s => {
+      const col = document.createElement('div');
+      col.className = 'sibling-col';
+      col.appendChild(buildTree(s.rga, s.label + ' RGA'));
+      valSibRow.appendChild(col);
+    });
+    valueContainer.appendChild(valSibRow);
+
+    const valToggle = makeToggle(subRGAs.length, valueContainer, true);
+    valueBranch.appendChild(valToggle);
+
+    const vLine = document.createElement('div');
+    vLine.className = 'value-line';
+    vLine.style.height = '10px';
+    valueBranch.appendChild(vLine);
+
+    valueBranch.appendChild(valueContainer);
+    forkBar.appendChild(valueBranch);
+
+    // ── Right branch: children ──
+    const childBranch = document.createElement('div');
+    childBranch.className = 'fork-branch';
+
+    const childStem = document.createElement('div');
+    childStem.className = 'fork-branch-stem stem-children';
+    childBranch.appendChild(childStem);
+
+    const childLabel = document.createElement('div');
+    childLabel.className = 'edge-label edge-label-children';
+    childLabel.textContent = 'children';
+    childBranch.appendChild(childLabel);
+
+    const childContainer = document.createElement('div');
+    childContainer.className = 'children-container';
+    const chSibRow = document.createElement('div');
+    chSibRow.className = 'siblings-row';
+    children.forEach(child => {
+      const col = document.createElement('div');
+      col.className = 'sibling-col';
+      col.appendChild(buildTree(child, context || 'RGA node'));
+      chSibRow.appendChild(col);
+    });
+    childContainer.appendChild(chSibRow);
+
+    const chToggle = makeToggle(children.length, childContainer, false);
+    childBranch.appendChild(chToggle);
+    childBranch.appendChild(makeLine(10));
+    childBranch.appendChild(childContainer);
+    forkBar.appendChild(childBranch);
+
+    forkSection.appendChild(forkBar);
+    wrapper.appendChild(forkSection);
+    return wrapper;
+  }
+
+  // ── Case 2: Only value (no children) ──
+  if (hasValue) {
+    const valueSection = document.createElement('div');
+    valueSection.className = 'value-section';
+
+    const vLine1 = document.createElement('div');
+    vLine1.className = 'value-line';
+    valueSection.appendChild(vLine1);
+
+    const edgeLabel = document.createElement('div');
+    edgeLabel.className = 'edge-label edge-label-value';
+    edgeLabel.textContent = subRGAs.length === 1 ? subRGAs[0].label : 'value';
+    valueSection.appendChild(edgeLabel);
+
+    const valueContainer = document.createElement('div');
+    valueContainer.className = 'value-container';
+
+    const toggleBtn = makeToggle(subRGAs.length, valueContainer, true);
+    valueSection.appendChild(toggleBtn);
+
+    const vLine2 = document.createElement('div');
+    vLine2.className = 'value-line';
+    vLine2.style.height = '12px';
+    valueSection.appendChild(vLine2);
+
+    const sibRow = document.createElement('div');
+    sibRow.className = 'siblings-row';
+    subRGAs.forEach(s => {
+      const col = document.createElement('div');
+      col.className = 'sibling-col';
+      col.appendChild(buildTree(s.rga, s.label + ' RGA'));
+      sibRow.appendChild(col);
+    });
+    valueContainer.appendChild(sibRow);
+    valueSection.appendChild(valueContainer);
+    wrapper.appendChild(valueSection);
+    return wrapper;
+  }
+
+  // ── Case 3: Only children (no value sub-RGAs) ──
+  if (hasChildren) {
+    const childSection = document.createElement('div');
+    childSection.className = 'children-section';
+
+    childSection.appendChild(makeLine());
+
+    const edgeLabel = document.createElement('div');
+    edgeLabel.className = 'edge-label edge-label-children';
+    edgeLabel.textContent = 'children';
+    childSection.appendChild(edgeLabel);
+
+    const childContainer = document.createElement('div');
+    childContainer.className = 'children-container';
+
+    const sibRow = document.createElement('div');
+    sibRow.className = 'siblings-row';
+    children.forEach(child => {
+      const col = document.createElement('div');
+      col.className = 'sibling-col';
+      col.appendChild(buildTree(child, context || 'RGA node'));
+      sibRow.appendChild(col);
+    });
+    childContainer.appendChild(sibRow);
+
+    const toggleBtn = makeToggle(children.length, childContainer, false);
+    childSection.appendChild(toggleBtn);
+    childSection.appendChild(makeLine(12));
+    childSection.appendChild(childContainer);
+    wrapper.appendChild(childSection);
+  }
+
+  return wrapper;
+}
+
+// ── Render ──────────────────────────────────────────────────────
+const root = document.createElement('div');
+root.className = 'tree-root';
+root.appendChild(buildTree(docData.blocks, 'blocks RGA'));
+canvas.appendChild(root);
+
+document.getElementById('inspector').classList.add('empty');
+</script>
+</body>
+</html>
